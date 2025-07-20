@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PISO PRINT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .image-header img {
+      width: 42%;
+      max-height: 175px;
+      object-fit: cover;
+      display: block;
+      margin: 20px auto;
+    }
+
+    .container {
+      background-color: #ffffff;
+      max-width: 500px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    select,
+    input[type="number"],
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .pricing {
+      background-color: #e9f7ef;
+      color: #2e7d32;
+      padding: 12px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .timer-box {
+      display: none;
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .progress-bar {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 5px;
+      margin-top: 8px;
+      overflow: hidden;
+      height: 20px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 100%;
+      background-color: #4caf50;
+      transition: width 1s linear;
+    }
+
+    .total-box {
+      display: none;
+      margin-top: 10px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 11px;
+      color: #999;
+    }
+
+    #pageRangeGroup {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="image-header">
+    <img src="f6ac5f2b-4485-42ca-8d7c-dcfb292f31ed.jpeg" alt="PISO PRINT Header">
+  </header>
+
+  <div class="container">
+    <p class="subtitle">Upload a document or photo and start printing.</p>
+
+    <div class="pricing">
+      💰 <strong>Prices:</strong><br>
+      ₱1 per page (Black & White)<br>
+      ₱5 per page (Colored)
+    </div>
+
+    <form id="printForm">
+      <label> Upload Document:</label>
+<input type="file" id="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.txt">
+
+      <label> Upload Photo:</label>
+      <input type="file" id="photo" accept="image/*">
+
+      <div id="pageRangeGroup">
+        <label> Pages to Print (e.g. 3,5-7):</label>
+        <input type="text" id="pageRange" placeholder="Leave blank = all pages">
+      </div>
+
+      <label> Paper Size:</label>
+      <select id="paper_size" required>
+        <option value="A4">A4</option>
+        <option value="Short">Short (8.5 x 11")</option>
+        <option value="Long">Long (8.5 x 13")</option>
+      </select>
+
+      <label> Number of Copies:</label>
+      <input type="number" id="copies" min="1" value="1" required>
+
+      <label> Print Type:</label>
+      <select id="color_option" required>
+        <option value="">--Select--</option>
+        <option value="bw">Black & White</option>
+        <option value="colored">Colored</option>
+      </select>
+
+      <button type="button" onclick="startPrinting()">Start Printing</button>
+    </form>
+
+    <div class="timer-box" id="timerBox">
+      ⏱️ Please insert coin within:
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="total-box" id="totalAmount">
+       Total Amount to Insert: ₱<span id="amount"></span>
+    </div>
+
+    <div class="footer">&copy; 2025 PisoPrint. All rights reserved.</div>
+  </div>
+
+ <script>
+  let totalPages = 1;
+  let timeLeft = 30;
+  let countdown;
+  const progressFill = document.getElementById("progressFill");
+
+  document.getElementById("file").addEventListener("change", async e => {
+    document.getElementById("photo").disabled = true;
+    document.getElementById("pageRangeGroup").style.display = "block";
+
+    const file = e.target.files[0];
+    const isPDF = file.type === "application/pdf";
+
+    if (isPDF) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(reader.result) }).promise;
+        totalPages = pdf.numPages;
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      totalPages = 1;
+    }
+  });
+
+  document.getElementById("photo").addEventListener("change", () => {
+    document.getElementById("file").disabled = true;
+    document.getElementById("pageRangeGroup").style.display = "none";
+    totalPages = 1;
+  });
+
+  function parsePageRange(input, maxPage) {
+    if (!input.trim()) return Array.from({ length: maxPage }, (_, i) => i + 1);
+    const pages = new Set();
+    input.split(',').map(seg => seg.trim()).forEach(seg => {
+      if (seg.includes('-')) {
+        const [s, e] = seg.split('-').map(n => parseInt(n, 10));
+        for (let i = s; i <= e && i <= maxPage; i++) pages.add(i);
+      } else {
+        const p = parseInt(seg, 10);
+        if (p >= 1 && p <= maxPage) pages.add(p);
+      }
+    });
+    return Array.from(pages);
+  }
+
+  function updateProgressBar() {
+    const percent = (timeLeft / 30) * 100;
+    progressFill.style.width = Math.min(percent, 100) + "%";
+
+    if (timeLeft <= 10) {
+      progressFill.style.backgroundColor = "#f44336"; // Red
+    } else if (timeLeft <= 20) {
+      progressFill.style.backgroundColor = "#ff9800"; // Orange
+    } else {
+      progressFill.style.backgroundColor = "#4caf50"; // Green
+    }
+  }
+
+  function startPrinting() {
+    const file = document.getElementById("file").files[0];
+    const photo = document.getElementById("photo").files[0];
+    const copies = parseInt(document.getElementById("copies").value);
+    const color = document.getElementById("color_option").value;
+    const pageInput = document.getElementById("pageRange").value;
+
+    if (!file && !photo) return alert("❗ You haven't uploaded anything yet.");
+    if (!copies || copies < 1) return alert("❗ Enter a valid number of copies.");
+    if (!color) return alert("❗ Please select print type.");
+
+    const pagesToPrint = parsePageRange(pageInput, totalPages);
+    if (file && pagesToPrint.length === 0) return alert("❗ No valid page(s) selected.");
+
+    const pricePerPage = color === "colored" ? 5 : 1;
+    const total = copies * pagesToPrint.length * pricePerPage;
+
+    document.getElementById("timerBox").style.display = "block";
+    document.getElementById("totalAmount").style.display = "block";
+    document.getElementById("amount").textContent = total;
+
+    timeLeft = 30;
+    updateProgressBar();
+
+    if (countdown) clearInterval(countdown);
+    countdown = setInterval(() => {
+      timeLeft--;
+      updateProgressBar();
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        alert("⏱️ Time expired. Please try again.");
+        window.location.reload();
+      }
+    }, 1000);
+  }
+
+  function insertCoin() {
+    timeLeft += 3;
+    updateProgressBar();
+  }
+
+  // Simulate coin insert for testing (you can replace this with real coin slot event trigger)
+  document.body.addEventListener("keydown", function(e) {
+    if (e.key === "c") {  // press 'c' to simulate coin
+      insertCoin();
+    }
+  });
+</script>
+</body>
+</html>
